@@ -8,6 +8,7 @@ from langchain.chains import ConversationChain
 
 import services.bedrock_service as bedrock_svc
 import services.chat_service as chat_svc
+import services.opensearch_service as os_svc
 
 INIT_MESSAGE = {
     "role": "assistant",
@@ -49,7 +50,7 @@ def init_chat_data() -> None:
     st.session_state.messages.append(INIT_MESSAGE)
 
 
-def get_sidebar_params() -> Tuple[float, float, int, int, int, str, str, str]:
+def get_sidebar_params() -> Tuple[float, float, int, int, int, str, str]:
     """
     Get inference parameters from the sidebar.
     """
@@ -123,15 +124,25 @@ def get_sidebar_params() -> Tuple[float, float, int, int, int, str, str, str]:
                     key=f"{st.session_state['widget_key']}_Memory_Window",
                 )
 
-        mode = st.radio(
-            "Generation Mode",
-            [":robot_face: **Normal**", ":eyeglasses: **RAG**", ":bar_chart: **SQL**"],
-            index=0,
-        )
+    return temperature, top_p, top_k, max_tokens, memory_window, model_id, system_prompt
 
-        st.button("New Chat", on_click=init_chat_data, type="primary")
 
-    return temperature, top_p, top_k, max_tokens, memory_window, model_id, system_prompt, mode
+def upload_file_to_opensearch():
+    pass
+
+
+def set_file_uploader():
+    if "uploader_key" not in st.session_state:
+        st.session_state.uploader_key = 0
+
+    uploaded_file = st.sidebar.file_uploader("Upload your .pdf file", type="pdf",
+                                             key=f"uploader_{st.session_state.uploader_key}")
+    if uploaded_file is not None:
+        btn = st.sidebar.button("Upload to OpenSearch", on_click=upload_file_to_opensearch, type="secondary")
+        if btn:
+            st.session_state.uploader_key += 1
+            upload_pdf_as_vector(uploaded_file)
+            st.rerun()
 
 
 def get_conversation_chat(
@@ -193,6 +204,18 @@ def convert_history_messages_for_memory() -> List[Union[AIMessage, HumanMessage]
     return messages
 
 
+def upload_pdf_as_vector(uploaded_file):
+    """PDF 파일을 받아서 Vector 로 변경 후 Opensearch Vector Store 에 저장.
+    """
+    return os_svc.create_index_from_pdf_file(uploaded_file=uploaded_file)
+
+
+def delete_document_index(index_name: str):
+    """OpenSearchIndex 제거
+    """
+    return os_svc.delete_index()
+
+
 def main() -> None:
     """
     Main function to run the Streamlit app.
@@ -209,10 +232,23 @@ def main() -> None:
         st.session_state["widget_key"] = str(random.randint(1, 1000000))
 
     # Set/Get sidebar params
-    temperature, top_p, top_k, max_tokens, memory_window, model_id, system_prompt, mode = get_sidebar_params()
+    temperature, top_p, top_k, max_tokens, memory_window, model_id, system_prompt = get_sidebar_params()
 
     # Get user input message
     content = st.chat_input()
+
+    # Set file upload file
+    set_file_uploader()
+
+    # Get Mode
+    mode = st.sidebar.radio(
+        "Generation Mode",
+        [":robot_face: **Normal**", ":eyeglasses: **RAG**", ":bar_chart: **SQL**"],
+        index=0,
+    )
+
+    # Set new chat button
+    st.sidebar.button("Start New Chat", on_click=init_chat_data, type="primary")
 
     # Display all history messages
     display_history_messages()
@@ -233,23 +269,23 @@ def main() -> None:
     if st.session_state.messages[-1]["role"] != "assistant":
         # Get response
         with st.chat_message("assistant"):
-
+            context = ""
             if "Normal" in mode:
                 response = chat_svc.get_conversation_response(chat=chat, content=content,
                                                               stream_handler=StreamHandler(st.empty()))
             elif "RAG" in mode:
-                # TODO
-                content = "내 이름은 김기철이야. " + content
-                response = chat_svc.get_conversation_response(chat=chat, content=content,
-                                                              stream_handler=StreamHandler(st.empty()))
+                response, context = chat_svc.get_rag_conversation_response(chat=chat, content=content,
+                                                                           stream_handler=StreamHandler(st.empty()))
+                context = "\n\n" + context
             elif "SQL" in mode:
                 # TODO
-                response = chat_svc.get_conversation_response(chat=chat, content=content,
-                                                              stream_handler=StreamHandler(st.empty()))
+                response = chat_svc.get_sql_conversation_response(chat=chat, content=content,
+                                                                  stream_handler=StreamHandler(st.empty()))
 
         # Store LLM generated responses
-        message = {"role": "assistant", "content": response}
+        message = {"role": "assistant", "content": response + context}
         st.session_state.messages.append(message)
+        st.rerun()
 
 
 if __name__ == "__main__":
