@@ -68,11 +68,12 @@ def get_sidebar_params() -> Tuple[float, float, int, int, int, str, str]:
         }
 
         model_id = model_map.get(model_id_select)
-        system_prompt = st.text_area(
-            "System Prompt",
-            "당신은 멋진 AI 입니다. 응답에 이모티콘 넣는 것을 좋아합니다.",
-            key=f"{st.session_state['widget_key']}_System_Prompt",
-        )
+        system_prompt = ""
+        # system_prompt = st.text_area(
+        #     "System Prompt",
+        #     "당신은 멋진 AI 입니다. 응답에 이모티콘 넣는 것을 좋아합니다.",
+        #     key=f"{st.session_state['widget_key']}_System_Prompt",
+        # )
 
         temperature = st.slider(
             "Temperature",
@@ -233,6 +234,12 @@ def main() -> None:
 
     # Set/Get sidebar params
     temperature, top_p, top_k, max_tokens, memory_window, model_id, system_prompt = get_sidebar_params()
+    model_kwargs = {
+        "temperature": temperature,
+        "top_p": top_p,
+        "top_k": top_k,
+        "max_tokens": max_tokens,
+    }
 
     # Get user input message
     content = st.chat_input()
@@ -243,7 +250,8 @@ def main() -> None:
     # Get Mode
     mode = st.sidebar.radio(
         "Generation Mode",
-        [":robot_face: **Normal**", ":eyeglasses: **RAG**", ":bar_chart: **SQL**"],
+        [":robot_face: **Normal**", ":hourglass_flowing_sand: **History**", ":eyeglasses: **RAG**",
+         ":bar_chart: **SQL**"],
         index=0,
     )
 
@@ -271,19 +279,26 @@ def main() -> None:
         with st.chat_message("assistant"):
             context = ""
             if "Normal" in mode:
-                response = chat_svc.get_conversation_response(chat=chat, content=content,
-                                                              stream_handler=StreamHandler(st.empty()))
+                response = chat_svc.get_response(model_id=model_id, content=content, model_kwargs=model_kwargs)
+
+            if "History" in mode:
+                response = chat_svc.get_conversation_response(model_id=model_id, content=content,
+                                                              memory_window=memory_window, model_kwargs=model_kwargs)
             elif "RAG" in mode:
-                response, context = chat_svc.get_rag_conversation_response(chat=chat, content=content,
-                                                                           stream_handler=StreamHandler(st.empty()))
-                context = "\n\n" + context
+                response, context = chat_svc.get_rag_conversation_response(model_id=model_id, content=content,
+                                                                           model_kwargs=model_kwargs)
+                context = ":memo: ***Context*** :memo: \n\n >" + context + "\n"
+                response = response + "\n\n" + context
             elif "SQL" in mode:
-                # TODO
-                response = chat_svc.get_sql_conversation_response(chat=chat, content=content,
-                                                                  stream_handler=StreamHandler(st.empty()))
+                answer, sql_query, sql_result = chat_svc.get_sql_conversation_response(model_id=model_id,
+                                                                                         content=content,
+                                                                                         model_kwargs=model_kwargs)
+                sql_query = ":memo: ***Query*** :memo: \n ``` \n " + sql_query + "\n ```"
+                sql_result = ":memo: ***Result*** :memo: \n ``` \n " + sql_result + "\n ```"
+                response = answer + "\n\n" + sql_query+ "\n\n" + sql_result
 
         # Store LLM generated responses
-        message = {"role": "assistant", "content": response + context}
+        message = {"role": "assistant", "content": response}
         st.session_state.messages.append(message)
         st.rerun()
 

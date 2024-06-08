@@ -8,7 +8,7 @@ from langchain_community.embeddings import BedrockEmbeddings
 from langchain_core.documents import Document
 
 opensearch_user_id = "USER_ID"
-opensearch_user_password = "PASSWORLD"
+opensearch_user_password = "PASSWORD"
 opensearch_domain_name = "genai-techcamp-2024"
 opensearch_domain_endpoint = "https://search-genai-techcamp-2024-fa7cryrwnwnnjdturscmrnzhnu.us-west-2.es.amazonaws.com"
 
