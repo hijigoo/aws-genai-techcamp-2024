@@ -172,18 +172,18 @@ def get_sql_conversation_response(
 
     # Make SQL generate prompt
     prompt = f"""
-        You are a {dialect} expert. 
-        You are interacting with a user who is asking you questions about the company's database.
-        Based on the database schema below, write a SQL query that would answer the user's question.
+        당신은 {dialect} 전문가입니다.
+        회사의 데이터베이스에 대한 질문을 하는 사용자와 상호 작용하고 있습니다.
+        아래의 데이터베이스 스키마를 기반으로 사용자의 질문에 답할 SQL 쿼리를 작성하세요.
 
-        Here is the database schema:
+        데이터베이스 스키마는 다음과 같습니다.
         <schema> {table_info} </schema>
 
-        Write ONLY THE SQL QUERY and nothing else. 
-        Do not wrap the SQL query in any other text, not even backticks.
+        SQL 쿼리만 작성하고 다른 것은 작성하지 마세요.
+        SQL 쿼리를 다른 텍스트로 묶지 마세요. 심지어 backtick 으로도 묶지 마세요.
 
-        For example:
-        Question: Name 10 customers
+        예시:
+        Question: 10명의 고객 이름을 보여주세요.
         SQL Query: SELECT Name FROM Customers LIMIT 10;
 
         Your turn:
@@ -207,8 +207,9 @@ def get_sql_conversation_response(
     sql_result = execute_query.invoke(sql_query)
 
     # Invoke LLM and Get final answer
-    answer_prompt = f"""Given the following user question, corresponding SQL query, and SQL result, answer the user question.
-
+    answer_prompt = f"""
+    주어진 사용자의 질문에 대해서 아래 해당 SQL 쿼리 및 SQL 결과를 참고해서 답변해주세요.
+    
     Question: {question}
     SQL Query: {sql_query}
     SQL Result: {sql_result}
@@ -223,9 +224,6 @@ def get_sql_conversation_response(
     answer = llm.invoke(
         messages, {"callbacks": [stream_handler]}
     ).content
-
-    print("ANSWER:")
-    print(answer)
 
     # How many employees are there
     return answer, sql_query, sql_result
