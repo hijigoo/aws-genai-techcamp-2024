@@ -4,9 +4,6 @@ from typing import List, Tuple, Union
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.chains import ConversationChain
-
-import services.bedrock_service as bedrock_svc
 import services.chat_service as chat_svc
 import services.opensearch_service as os_svc
 
@@ -50,7 +47,7 @@ def init_chat_data() -> None:
     st.session_state.messages.append(INIT_MESSAGE)
 
 
-def get_sidebar_params() -> Tuple[float, float, int, int, int, str, str]:
+def get_sidebar_params() -> Tuple[float, float, int, int, int, str]:
     """
     Get inference parameters from the sidebar.
     """
@@ -68,13 +65,6 @@ def get_sidebar_params() -> Tuple[float, float, int, int, int, str, str]:
         }
 
         model_id = model_map.get(model_id_select)
-        system_prompt = ""
-        # system_prompt = st.text_area(
-        #     "System Prompt",
-        #     "당신은 멋진 AI 입니다. 응답에 이모티콘 넣는 것을 좋아합니다.",
-        #     key=f"{st.session_state['widget_key']}_System_Prompt",
-        # )
-
         temperature = st.slider(
             "Temperature",
             min_value=0.0,
@@ -125,7 +115,7 @@ def get_sidebar_params() -> Tuple[float, float, int, int, int, str, str]:
                     key=f"{st.session_state['widget_key']}_Memory_Window",
                 )
 
-    return temperature, top_p, top_k, max_tokens, memory_window, model_id, system_prompt
+    return temperature, top_p, top_k, max_tokens, memory_window, model_id
 
 
 def upload_file_to_opensearch():
@@ -136,7 +126,7 @@ def set_file_uploader():
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
 
-    uploaded_file = st.sidebar.file_uploader("Upload your .pdf file", type="pdf",
+    uploaded_file = st.sidebar.file_uploader("Upload your .pdf file", type={"pdf", "csv"},
                                              key=f"uploader_{st.session_state.uploader_key}")
     if uploaded_file is not None:
         btn = st.sidebar.button("Upload to OpenSearch", on_click=upload_file_to_opensearch, type="secondary")
@@ -144,34 +134,6 @@ def set_file_uploader():
             st.session_state.uploader_key += 1
             upload_pdf_as_vector(uploaded_file)
             st.rerun()
-
-
-def get_conversation_chat(
-        temperature: float,
-        top_p: float,
-        top_k: int,
-        max_tokens: int,
-        memory_window: int,
-        model_id: str,
-        system_prompt: str
-) -> ConversationChain:
-    """
-    Initialize the ConversationChain with the given parameters.
-    """
-    model_kwargs = {
-        "temperature": temperature,
-        "top_p": top_p,
-        "top_k": top_k,
-        "max_tokens": max_tokens,
-    }
-
-    if system_prompt != "":
-        model_kwargs["system"] = system_prompt
-
-    chat = bedrock_svc.get_bedrock_chat(model_id=model_id, model_kwargs=model_kwargs)
-    chat = bedrock_svc.get_conversation_chat(llm=chat, memory_window=memory_window)
-
-    return chat
 
 
 def display_history_messages() -> None:
@@ -208,10 +170,10 @@ def convert_history_messages_for_memory() -> List[Union[AIMessage, HumanMessage]
 def upload_pdf_as_vector(uploaded_file):
     """PDF 파일을 받아서 Vector 로 변경 후 Opensearch Vector Store 에 저장.
     """
-    return os_svc.create_index_from_pdf_file(uploaded_file=uploaded_file)
+    return os_svc.create_index_from_uploaded_file(uploaded_file=uploaded_file)
 
 
-def delete_document_index(index_name: str):
+def delete_document_index():
     """OpenSearchIndex 제거
     """
     return os_svc.delete_index()
@@ -233,7 +195,7 @@ def main() -> None:
         st.session_state["widget_key"] = str(random.randint(1, 1000000))
 
     # Set/Get sidebar params
-    temperature, top_p, top_k, max_tokens, memory_window, model_id, system_prompt = get_sidebar_params()
+    temperature, top_p, top_k, max_tokens, memory_window, model_id = get_sidebar_params()
     model_kwargs = {
         "temperature": temperature,
         "top_p": top_p,
@@ -250,7 +212,9 @@ def main() -> None:
     # Get Mode
     mode = st.sidebar.radio(
         "Generation Mode",
-        [":robot_face: **Normal**", ":hourglass_flowing_sand: **History**", ":eyeglasses: **RAG**",
+        [":robot_face: **Normal**",
+         ":hourglass_flowing_sand: **History**",
+         ":eyeglasses: **RAG**",
          ":bar_chart: **SQL**"],
         index=0,
     )
@@ -270,9 +234,6 @@ def main() -> None:
         with st.chat_message("user"):
             st.markdown(content)
 
-    # Get chat
-    chat = get_conversation_chat(temperature, top_p, top_k, max_tokens, memory_window, model_id, system_prompt)
-
     # Generate a new response if last message is not from assistant
     if st.session_state.messages[-1]["role"] != "assistant":
         # Get response
@@ -287,15 +248,16 @@ def main() -> None:
             elif "RAG" in mode:
                 response, context = chat_svc.get_rag_conversation_response(model_id=model_id, content=content,
                                                                            model_kwargs=model_kwargs)
-                context = ":memo: ***Context*** :memo: \n\n >" + context + "\n"
+                context = ":memo: ***Context*** :memo: \n\n" + context + "\n"
                 response = response + "\n\n" + context
+
             elif "SQL" in mode:
                 answer, sql_query, sql_result = chat_svc.get_sql_conversation_response(model_id=model_id,
-                                                                                         content=content,
-                                                                                         model_kwargs=model_kwargs)
+                                                                                       content=content,
+                                                                                       model_kwargs=model_kwargs)
                 sql_query = ":memo: ***Query*** :memo: \n ``` \n " + sql_query + "\n ```"
                 sql_result = ":memo: ***Result*** :memo: \n ``` \n " + sql_result + "\n ```"
-                response = answer + "\n\n" + sql_query+ "\n\n" + sql_result
+                response = answer + "\n\n" + sql_query + "\n\n" + sql_result
 
         # Store LLM generated responses
         message = {"role": "assistant", "content": response}
