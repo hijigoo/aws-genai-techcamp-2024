@@ -239,17 +239,17 @@ def main() -> None:
         # Get response
         with st.chat_message("assistant"):
             if "Normal Chat" in mode:
-                response = chat_svc.get_chat_response2(model_id=model_id, content=content,
+                response = chat_svc.get_chat_response(model_id=model_id, content=content,
                                                        model_kwargs=model_kwargs)
 
             if "History Chat" in mode:
-                response = chat_svc.get_conversation_chat_response2(model_id=model_id, content=content,
+                response = chat_svc.get_conversation_chat_response(model_id=model_id, content=content,
                                                                     memory_window=memory_window,
                                                                     model_kwargs=model_kwargs)
             elif "RAG Chat" in mode:
-                response, context = chat_svc.get_rag_chat_response2(model_id=model_id, content=content,
+                response, context = chat_svc.get_rag_chat_response(model_id=model_id, content=content,
                                                                     model_kwargs=model_kwargs)
-                context = ":memo: ***Context*** :memo: \n\n" + context + "\n"
+                context = ":memo: ***Context*** :memo: \n\n" + context
                 response = response + "\n\n" + context
 
             elif "SQL Chat" in mode:

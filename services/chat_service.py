@@ -11,12 +11,11 @@ from langchain_community.tools import QuerySQLDataBaseTool
 from langchain_core.messages import HumanMessage
 
 from langchain_community.utilities import SQLDatabase
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 import services.opensearch_service as os_svc
 
 
-# 생성된 텍스트를 Streamlit에 스트리밍하기 위한 콜백 핸들러 클래스를 정의합니다.
+# 토큰 단위로 생성되는 스트리밍 텍스트를 출력하기 위한 콜백 핸들러 클래스를 정의합니다.
 class StreamHandler(BaseCallbackHandler, ABC):
     """
     Callback handler to stream the generated text to Streamlit.
@@ -36,48 +35,13 @@ class StreamHandler(BaseCallbackHandler, ABC):
         self.container.markdown(self.text)
 
 
-# ChatBedrock 인스턴스를 통해서 일반 응답을 생성합니다.
+# 일반 응답을 생성합니다.
 def get_chat_response(model_id: str, content: str, model_kwargs: Dict):
     # 1. ChatBedrock 인스턴스를 생성합니다.
     llm = ChatBedrock(
         region_name="us-west-2",
         model_id=model_id,
         model_kwargs=model_kwargs,
-        streaming=True
-    )
-
-    # 2. ChatBedrock 에 전송할 메시지를 정의합니다.
-    messages = [
-        HumanMessage(
-            content=content
-        )
-    ]
-
-    # 3 . 스트림 응답을 받을 클래스를 생성합니다.
-    stream_handler = StreamHandler(st.empty())
-
-    # Option 1
-    # 4. ChatBedrock 을 호출해서 응답을 요청합니다.
-    # response = ""
-    # for chunk in chat.stream(messages):
-    #     print(chunk)
-    #     response += chunk.content
-    #     stream_handler.on_llm_new_token(chunk.content)
-    # return response
-
-    # Option 2
-    # 4. ChatBedrock 을 호출해서 응답을 요청합니다.
-    answer = llm.invoke(messages, {"callbacks": [stream_handler]}).content
-    return answer
-
-
-# ChatBedrock 인스턴스를 통해서 일반 응답을 생성합니다.
-def get_chat_response2(model_id: str, content: str, model_kwargs: Dict):
-    # 1. ChatBedrock 인스턴스를 생성합니다.
-    llm = ChatBedrock(
-        region_name="us-west-2",
-        model_id=model_id,
-        model_kwargs=model_kwargs,
         streaming=True,
         callbacks=[StreamHandler(st.empty())]
     )
@@ -89,29 +53,19 @@ def get_chat_response2(model_id: str, content: str, model_kwargs: Dict):
         )
     ]
 
-    # Option 1
-    # 3. ChatBedrock 을 호출해서 응답을 요청합니다.
-    # response = ""
-    # for chunk in chat.stream(messages):
-    #     print(chunk)
-    #     response += chunk.content
-    #     stream_handler.on_llm_new_token(chunk.content)
-    # return response
-
-    # Option 2
-    # 3. ChatBedrock 을 호출해서 응답을 요청합니다.
+    # 3. ChatBedrock 을 호출해서 응답을 생성합니다.
     response = llm.invoke(messages)
     answer = response.content
     return answer
 
 
+# History 를 기억하는 응답을 생성합니다.
 def get_conversation_chat_response(
         model_id: str, content: str, memory_window: int, model_kwargs: Dict
 ) -> str:
     """
     Generate a response from the conversation chain with the given input.
     """
-
     # 1. ChatBedrock 인스턴스를 생성합니다.
     llm = ChatBedrock(
         region_name="us-west-2",
@@ -121,66 +75,7 @@ def get_conversation_chat_response(
         callbacks=[StreamHandler(st.empty())]
     )
 
-    # 2. ChatBedrock 에 전송할 메시지를 정의합니다.
-    #  - history 에는 기록된 대화 내역이 자동으로 입력됩니다.
-    #  - input 에는 ChatBedrock 에 전송할 메시지가 입력됩니다.
-    prompt_template = ChatPromptTemplate.from_messages(
-        [
-            MessagesPlaceholder(variable_name="history"),
-            MessagesPlaceholder(variable_name="input"),
-        ]
-    )
-
-    # 3. 대화를 하고 메모리에서 대화 히스토리를 로드하는 체인을 생성합니다.
-    # StreamlitChatMessageHistory will store messages in Streamlit session state at the specified key=.
-    # The default key is "langchain_messages".
-    chain = ConversationChain(
-        llm=llm,
-        memory=ConversationBufferWindowMemory(
-            k=memory_window,
-            ai_prefix="Assistant",
-            chat_memory=StreamlitChatMessageHistory(),
-            return_messages=True
-        ),
-        prompt=prompt_template,
-    )
-
-    # 4. ChatBedrock 에 전송할 사용자 메시지를 정의합니다.
-    messages = [
-        HumanMessage(
-            content=content
-        )
-    ]
-
-    # 5. 스트림 응답을 받을 클래스를 생성합니다.
-    stream_handler = StreamHandler(st.empty())
-
-    # 6. ConversationChain 을 호출해서 응답을 요청합니다.
-    # - template 에 history 내용은 자동으로 입력됩니다.
-    # - template 에 input 은 위에서 정의한 사용자 메시지로 입력합니다.
-    answer = chain.invoke(
-        {"input": messages}, {"callbacks": [stream_handler]}
-    )['response']
-
-    return answer
-
-
-def get_conversation_chat_response2(
-        model_id: str, content: str, memory_window: int, model_kwargs: Dict
-) -> str:
-    """
-    Generate a response from the conversation chain with the given input.
-    """
-    # 1. ChatBedrock 인스턴스를 생성합니다.
-    llm = ChatBedrock(
-        region_name="us-west-2",
-        model_id=model_id,
-        model_kwargs=model_kwargs,
-        streaming=True,
-        callbacks=[StreamHandler(st.empty())]
-    )
-
-    # 3. 대화를 하고 메모리에서 대화 히스토리를 로드하는 체인을 생성합니다.
+    # 2. 대화를 하고 메모리에서 대화 히스토리를 로드하는 체인을 생성합니다.
     # StreamlitChatMessageHistory will store messages in Streamlit session state at the specified key=.
     # The default key is "langchain_messages".
     conversation_chain = ConversationChain(
@@ -194,72 +89,28 @@ def get_conversation_chat_response2(
         verbose=True
     )
 
-    # 6. ConversationChain 을 호출해서 응답을 요청합니다.
+    # 6. ConversationChain 을 호출해서 응답을 생성합니다.
     answer = conversation_chain.predict(input=content)
     return answer
 
 
+# Knowledge DB 로 부터 Context를 검색해서 응답을 생성합니다.
 def get_rag_chat_response(
         model_id: str, content: str, model_kwargs: Dict
 ) -> tuple[str, str]:
-    # 1. OpenSearch 에서 생성된 index 가 있는지 확인합니다.
-    # - 파일 업로드할 때 생성됩니다.
+    # 1. OpenSearch 에서 파일이 업로드 되어서 생성된 index 가 있는지 확인합니다.
+    # - 업로드 된 파일이 없는 경우 리젝 응답이 나갑니다.
     if not os_svc.check_if_index_exists():
         return "업로드된 파일이 없습니다.", ""
 
-    # 2. Vector Search 를 해서 질문과 가장 관련된 Document 를 k 개 검색합니다.
-    docs = os_svc.get_most_similar_docs_by_query(query=content, k=1)
-    context = docs[0].page_content
+    # 2. OpenSearch 에 Vector Search 를 해서 질문과 가장 관련된 Document 를 k 개 검색합니다.
+    docs = os_svc.get_most_similar_docs_by_query(query=content, k=2)
 
-    # 3. ChatBedrock 인스턴스를 생성합니다.
-    llm = ChatBedrock(
-        region_name="us-west-2",
-        model_id=model_id,
-        model_kwargs=model_kwargs,
-        streaming=True
-    )
-
-    # 4. 프롬프트를 정의합니다.
-    # - context 에는 검색한 내용이 들어갑니다.
-    # - content 에는 질문이 들어갑니다.
-    prompt = f"""
-    다음 문맥을 사용하여 마지막 질문에 대한 간결한 답변을 제공하세요.
-    답을 모르면 모른다고 말하고 답을 만들어내려고 하지 마세요.
-    
-    {context}
-    
-    질문: {content}
-    """
-
-    # 5. ChatBedrock 에 전송할 사용자 메시지를 정의합니다.
-    messages = [
-        HumanMessage(
-            content=prompt
-        )
-    ]
-
-    # 6. 스트림 응답을 받을 클래스를 생성합니다.
-    stream_handler = StreamHandler(st.empty())
-
-    # 7. ChatBedrock 을 호출해서 응답을 요청합니다.
-    answer = llm.invoke(
-        messages, {"callbacks": [stream_handler]}
-    ).content
-
-    return answer, context
-
-
-def get_rag_chat_response2(
-        model_id: str, content: str, model_kwargs: Dict
-) -> tuple[str, str]:
-    # 1. OpenSearch 에서 생성된 index 가 있는지 확인합니다.
-    # - 파일 업로드할 때 생성됩니다.
-    if not os_svc.check_if_index_exists():
-        return "업로드된 파일이 없습니다.", ""
-
-    # 2. Vector Search 를 해서 질문과 가장 관련된 Document 를 k 개 검색합니다.
-    docs = os_svc.get_most_similar_docs_by_query(query=content, k=1)
-    context = docs[0].page_content
+    # 3. 가져온 Document 의 내용을 모아서 응답시 참고할 Context 를 만듭니다.
+    context = ""
+    for doc in docs:
+        context += doc.page_content
+        context += "\n\n"
 
     # 3. ChatBedrock 인스턴스를 생성합니다.
     llm = ChatBedrock(
@@ -289,13 +140,14 @@ def get_rag_chat_response2(
         )
     ]
 
-    # 6. 스트림 응답을 받을 클래스를 생성합니다.
+    # 6. ChatBedrock 을 호출해서 응답을 생성합니다.
     response = llm.invoke(messages)
     answer = response.content
 
     return answer, context
 
 
+# SQL 을 생성해서 데이터를 검색한 뒤 응답을 생성합니다.
 def get_sql_chat_response(
         model_id: str, content: str, model_kwargs: Dict
 ) -> tuple[str, str, str]:
@@ -355,7 +207,6 @@ def get_sql_chat_response(
     ).content
 
     # 6. SQL을 실행해서 데이터를 검색합니다.
-    stream_handler = StreamHandler(st.empty())
     execute_query = QuerySQLDataBaseTool(db=db)
     sql_result = execute_query.invoke(sql_query)
 
