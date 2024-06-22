@@ -170,7 +170,7 @@ def convert_history_messages_for_memory() -> List[Union[AIMessage, HumanMessage]
 def upload_pdf_as_vector(uploaded_file):
     """PDF 파일을 받아서 Vector 로 변경 후 Opensearch Vector Store 에 저장.
     """
-    return os_svc.create_index_from_uploaded_file(uploaded_file=uploaded_file)
+    return os_svc.create_index_from_pdf_file(uploaded_file=uploaded_file)
 
 
 def delete_document_index():
@@ -212,10 +212,10 @@ def main() -> None:
     # Get Mode
     mode = st.sidebar.radio(
         "Generation Mode",
-        [":robot_face: **Normal**",
-         ":hourglass_flowing_sand: **History**",
-         ":eyeglasses: **RAG**",
-         ":bar_chart: **SQL**"],
+        [":robot_face: **Normal Chat**",
+         ":hourglass_flowing_sand: **History Chat**",
+         ":eyeglasses: **RAG Chat**",
+         ":bar_chart: **SQL Chat**"],
         index=0,
     )
 
@@ -238,23 +238,24 @@ def main() -> None:
     if st.session_state.messages[-1]["role"] != "assistant":
         # Get response
         with st.chat_message("assistant"):
-            context = ""
-            if "Normal" in mode:
-                response = chat_svc.get_response(model_id=model_id, content=content, model_kwargs=model_kwargs)
+            if "Normal Chat" in mode:
+                response = chat_svc.get_chat_response2(model_id=model_id, content=content,
+                                                       model_kwargs=model_kwargs)
 
-            if "History" in mode:
-                response = chat_svc.get_conversation_response(model_id=model_id, content=content,
-                                                              memory_window=memory_window, model_kwargs=model_kwargs)
-            elif "RAG" in mode:
-                response, context = chat_svc.get_rag_conversation_response(model_id=model_id, content=content,
-                                                                           model_kwargs=model_kwargs)
+            if "History Chat" in mode:
+                response = chat_svc.get_conversation_chat_response2(model_id=model_id, content=content,
+                                                                    memory_window=memory_window,
+                                                                    model_kwargs=model_kwargs)
+            elif "RAG Chat" in mode:
+                response, context = chat_svc.get_rag_chat_response2(model_id=model_id, content=content,
+                                                                    model_kwargs=model_kwargs)
                 context = ":memo: ***Context*** :memo: \n\n" + context + "\n"
                 response = response + "\n\n" + context
 
-            elif "SQL" in mode:
-                answer, sql_query, sql_result = chat_svc.get_sql_conversation_response(model_id=model_id,
-                                                                                       content=content,
-                                                                                       model_kwargs=model_kwargs)
+            elif "SQL Chat" in mode:
+                answer, sql_query, sql_result = chat_svc.get_sql_chat_response(model_id=model_id,
+                                                                               content=content,
+                                                                               model_kwargs=model_kwargs)
                 sql_query = ":memo: ***Query*** :memo: \n ``` \n " + sql_query + "\n ```"
                 sql_result = ":memo: ***Result*** :memo: \n ``` \n " + sql_result + "\n ```"
                 response = answer + "\n\n" + sql_query + "\n\n" + sql_result

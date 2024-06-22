@@ -37,7 +37,7 @@ class StreamHandler(BaseCallbackHandler, ABC):
 
 
 # ChatBedrock 인스턴스를 통해서 일반 응답을 생성합니다.
-def get_response(model_id: str, content: str, model_kwargs: Dict):
+def get_chat_response(model_id: str, content: str, model_kwargs: Dict):
     # 1. ChatBedrock 인스턴스를 생성합니다.
     llm = ChatBedrock(
         region_name="us-west-2",
@@ -71,7 +71,41 @@ def get_response(model_id: str, content: str, model_kwargs: Dict):
     return answer
 
 
-def get_conversation_response(
+# ChatBedrock 인스턴스를 통해서 일반 응답을 생성합니다.
+def get_chat_response2(model_id: str, content: str, model_kwargs: Dict):
+    # 1. ChatBedrock 인스턴스를 생성합니다.
+    llm = ChatBedrock(
+        region_name="us-west-2",
+        model_id=model_id,
+        model_kwargs=model_kwargs,
+        streaming=True,
+        callbacks=[StreamHandler(st.empty())]
+    )
+
+    # 2. ChatBedrock 에 전송할 메시지를 정의합니다.
+    messages = [
+        HumanMessage(
+            content=content
+        )
+    ]
+
+    # Option 1
+    # 3. ChatBedrock 을 호출해서 응답을 요청합니다.
+    # response = ""
+    # for chunk in chat.stream(messages):
+    #     print(chunk)
+    #     response += chunk.content
+    #     stream_handler.on_llm_new_token(chunk.content)
+    # return response
+
+    # Option 2
+    # 3. ChatBedrock 을 호출해서 응답을 요청합니다.
+    response = llm.invoke(messages)
+    answer = response.content
+    return answer
+
+
+def get_conversation_chat_response(
         model_id: str, content: str, memory_window: int, model_kwargs: Dict
 ) -> str:
     """
@@ -83,7 +117,8 @@ def get_conversation_response(
         region_name="us-west-2",
         model_id=model_id,
         model_kwargs=model_kwargs,
-        streaming=True
+        streaming=True,
+        callbacks=[StreamHandler(st.empty())]
     )
 
     # 2. ChatBedrock 에 전송할 메시지를 정의합니다.
@@ -130,7 +165,41 @@ def get_conversation_response(
     return answer
 
 
-def get_rag_conversation_response(
+def get_conversation_chat_response2(
+        model_id: str, content: str, memory_window: int, model_kwargs: Dict
+) -> str:
+    """
+    Generate a response from the conversation chain with the given input.
+    """
+    # 1. ChatBedrock 인스턴스를 생성합니다.
+    llm = ChatBedrock(
+        region_name="us-west-2",
+        model_id=model_id,
+        model_kwargs=model_kwargs,
+        streaming=True,
+        callbacks=[StreamHandler(st.empty())]
+    )
+
+    # 3. 대화를 하고 메모리에서 대화 히스토리를 로드하는 체인을 생성합니다.
+    # StreamlitChatMessageHistory will store messages in Streamlit session state at the specified key=.
+    # The default key is "langchain_messages".
+    conversation_chain = ConversationChain(
+        llm=llm,
+        memory=ConversationBufferWindowMemory(
+            k=memory_window,
+            ai_prefix='Assistant',
+            chat_memory=StreamlitChatMessageHistory(),
+            return_messages=True
+        ),
+        verbose=True
+    )
+
+    # 6. ConversationChain 을 호출해서 응답을 요청합니다.
+    answer = conversation_chain.predict(input=content)
+    return answer
+
+
+def get_rag_chat_response(
         model_id: str, content: str, model_kwargs: Dict
 ) -> tuple[str, str]:
     # 1. OpenSearch 에서 생성된 index 가 있는지 확인합니다.
@@ -138,17 +207,17 @@ def get_rag_conversation_response(
     if not os_svc.check_if_index_exists():
         return "업로드된 파일이 없습니다.", ""
 
-    # 2. ChatBedrock 인스턴스를 생성합니다.
+    # 2. Vector Search 를 해서 질문과 가장 관련된 Document 를 k 개 검색합니다.
+    docs = os_svc.get_most_similar_docs_by_query(query=content, k=1)
+    context = docs[0].page_content
+
+    # 3. ChatBedrock 인스턴스를 생성합니다.
     llm = ChatBedrock(
         region_name="us-west-2",
         model_id=model_id,
         model_kwargs=model_kwargs,
         streaming=True
     )
-
-    # 3. Vector Search 를 해서 질문과 가장 관련된 Document 를 k 개 검색합니다.
-    docs = os_svc.get_most_similar_docs_by_vector_query(query=content, k=1)
-    context = docs[0].page_content
 
     # 4. 프롬프트를 정의합니다.
     # - context 에는 검색한 내용이 들어갑니다.
@@ -174,14 +243,60 @@ def get_rag_conversation_response(
 
     # 7. ChatBedrock 을 호출해서 응답을 요청합니다.
     answer = llm.invoke(
-        # messages
         messages, {"callbacks": [stream_handler]}
     ).content
 
     return answer, context
 
 
-def get_sql_conversation_response(
+def get_rag_chat_response2(
+        model_id: str, content: str, model_kwargs: Dict
+) -> tuple[str, str]:
+    # 1. OpenSearch 에서 생성된 index 가 있는지 확인합니다.
+    # - 파일 업로드할 때 생성됩니다.
+    if not os_svc.check_if_index_exists():
+        return "업로드된 파일이 없습니다.", ""
+
+    # 2. Vector Search 를 해서 질문과 가장 관련된 Document 를 k 개 검색합니다.
+    docs = os_svc.get_most_similar_docs_by_query(query=content, k=1)
+    context = docs[0].page_content
+
+    # 3. ChatBedrock 인스턴스를 생성합니다.
+    llm = ChatBedrock(
+        region_name="us-west-2",
+        model_id=model_id,
+        model_kwargs=model_kwargs,
+        streaming=True,
+        callbacks=[StreamHandler(st.empty())]
+    )
+
+    # 4. 프롬프트를 정의합니다.
+    # - context 에는 검색한 내용이 들어갑니다.
+    # - content 에는 질문이 들어갑니다.
+    prompt = f"""
+    다음 문맥을 사용하여 마지막 질문에 대한 간결한 답변을 제공하세요.
+    답을 모르면 모른다고 말하고 답을 만들어내려고 하지 마세요.
+
+    {context}
+
+    질문: {content}
+    """
+
+    # 5. ChatBedrock 에 전송할 사용자 메시지를 정의합니다.
+    messages = [
+        HumanMessage(
+            content=prompt
+        )
+    ]
+
+    # 6. 스트림 응답을 받을 클래스를 생성합니다.
+    response = llm.invoke(messages)
+    answer = response.content
+
+    return answer, context
+
+
+def get_sql_chat_response(
         model_id: str, content: str, model_kwargs: Dict
 ) -> tuple[str, str, str]:
     """
@@ -189,11 +304,12 @@ def get_sql_conversation_response(
     """
 
     # 1. ChatBedrock 인스턴스를 생성합니다.
+    # - 출력은 모아서 할 예정이기 때문에 Streaming 없이 생성합니다.
     llm = ChatBedrock(
         region_name="us-west-2",
         model_id=model_id,
         model_kwargs=model_kwargs,
-        streaming=True
+        streaming=False
     )
 
     # 2. DB instance 를 생성합니다.
@@ -243,7 +359,16 @@ def get_sql_conversation_response(
     execute_query = QuerySQLDataBaseTool(db=db)
     sql_result = execute_query.invoke(sql_query)
 
-    # 7. 최종 응답을 생성하기 위한 프롬프트를 작성합니다
+    # 7. 최종 응답 생성을 위한 ChatBedrock 인스턴스를 생성합니다.
+    llm = ChatBedrock(
+        region_name="us-west-2",
+        model_id=model_id,
+        model_kwargs=model_kwargs,
+        streaming=True,
+        callbacks=[StreamHandler(st.empty())]
+    )
+
+    # 8. 최종 응답을 생성하기 위한 프롬프트를 작성합니다
     # - question 에는 사용자 질문이 들어갑니다.
     # - sql_query 에는 실행한 query 가 들어갑니다.
     # - sql_result 에는 검색한 데이터가 들어갑니다.
@@ -255,16 +380,15 @@ def get_sql_conversation_response(
     SQL Result: {sql_result}
     """
 
-    # 8. ChatBedrock 에 전송할 사용자 메시지를 정의합니다.
+    # 9. ChatBedrock 에 전송할 사용자 메시지를 정의합니다.
     messages = [
         HumanMessage(
             content=answer_prompt
         )
     ]
 
-    # 9. ChatBedrock 을 호출해서 최종 응답을 생성합니다.
-    answer = llm.invoke(
-        messages, {"callbacks": [stream_handler]}
-    ).content
+    # 10. ChatBedrock 을 호출해서 최종 응답을 생성합니다.
+    response = llm.invoke(messages)
+    answer = response.content
 
     return answer, sql_query, sql_result
