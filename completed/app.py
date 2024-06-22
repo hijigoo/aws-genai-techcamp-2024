@@ -3,8 +3,8 @@ from typing import List, Tuple, Union
 
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
-import complete.services.chat_service as chat_svc
-import complete.services.opensearch_service as os_svc
+import completed.services.chat_service as chat_svc
+import completed.services.opensearch_service as os_svc
 
 
 def set_page_config() -> None:
