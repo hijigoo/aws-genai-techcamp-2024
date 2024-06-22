@@ -3,31 +3,8 @@ from typing import List, Tuple, Union
 
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
-from langchain.callbacks.base import BaseCallbackHandler
-import services.chat_service as chat_svc
-import services.opensearch_service as os_svc
-
-INIT_MESSAGE = {
-    "role": "assistant",
-    "content": "안녕하세요! 저는 Claude 3 챗봇 입니다. 무엇을 도와드릴까요?",
-}
-
-
-class StreamHandler(BaseCallbackHandler):
-    """
-    Callback handler to stream the generated text to Streamlit.
-    """
-
-    def __init__(self, container: st.container) -> None:
-        self.container = container
-        self.text = ""
-
-    def on_llm_new_token(self, token: str, **kwargs) -> None:
-        """
-        Append the new token to the text and update the Streamlit container.
-        """
-        self.text += token
-        self.container.markdown(self.text)
+import complete.services.chat_service as chat_svc
+import complete.services.opensearch_service as os_svc
 
 
 def set_page_config() -> None:
@@ -42,9 +19,14 @@ def init_chat_data() -> None:
     """
     Reset the chat session and initialize a new conversation chain.
     """
+    init_message = {
+        "role": "assistant",
+        "content": "안녕하세요! 저는 Claude 3 챗봇 입니다. 무엇을 도와드릴까요?",
+    }
+
     st.session_state.messages = []
     st.session_state["langchain_messages"] = []
-    st.session_state.messages.append(INIT_MESSAGE)
+    st.session_state.messages.append(init_message)
 
 
 def get_sidebar_params() -> Tuple[float, float, int, int, int, str]:
@@ -118,10 +100,6 @@ def get_sidebar_params() -> Tuple[float, float, int, int, int, str]:
     return temperature, top_p, top_k, max_tokens, memory_window, model_id
 
 
-def upload_file_to_opensearch():
-    pass
-
-
 def set_file_uploader():
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
@@ -129,10 +107,10 @@ def set_file_uploader():
     uploaded_file = st.sidebar.file_uploader("Upload your .pdf file", type={"pdf", "csv"},
                                              key=f"uploader_{st.session_state.uploader_key}")
     if uploaded_file is not None:
-        btn = st.sidebar.button("Upload to OpenSearch", on_click=upload_file_to_opensearch, type="secondary")
+        btn = st.sidebar.button("Upload to OpenSearch", type="secondary")
         if btn:
             st.session_state.uploader_key += 1
-            upload_pdf_as_vector(uploaded_file)
+            os_svc.create_index_from_pdf_file(uploaded_file=uploaded_file)
             st.rerun()
 
 
@@ -165,18 +143,6 @@ def convert_history_messages_for_memory() -> List[Union[AIMessage, HumanMessage]
                 messages[i] = message
 
     return messages
-
-
-def upload_pdf_as_vector(uploaded_file):
-    """PDF 파일을 받아서 Vector 로 변경 후 Opensearch Vector Store 에 저장.
-    """
-    return os_svc.create_index_from_pdf_file(uploaded_file=uploaded_file)
-
-
-def delete_document_index():
-    """OpenSearchIndex 제거
-    """
-    return os_svc.delete_index()
 
 
 def main() -> None:
@@ -240,15 +206,15 @@ def main() -> None:
         with st.chat_message("assistant"):
             if "Normal Chat" in mode:
                 response = chat_svc.get_chat_response(model_id=model_id, content=content,
-                                                       model_kwargs=model_kwargs)
+                                                      model_kwargs=model_kwargs)
 
             if "History Chat" in mode:
                 response = chat_svc.get_conversation_chat_response(model_id=model_id, content=content,
-                                                                    memory_window=memory_window,
-                                                                    model_kwargs=model_kwargs)
+                                                                   memory_window=memory_window,
+                                                                   model_kwargs=model_kwargs)
             elif "RAG Chat" in mode:
                 response, context = chat_svc.get_rag_chat_response(model_id=model_id, content=content,
-                                                                    model_kwargs=model_kwargs)
+                                                                   model_kwargs=model_kwargs)
                 context = ":memo: ***Context*** :memo: \n\n" + context
                 response = response + "\n\n" + context
 
