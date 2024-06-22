@@ -38,7 +38,7 @@ class StreamHandler(BaseCallbackHandler, ABC):
 def get_chat_response(model_id: str, content: str, model_kwargs: Dict):
     # 1. ChatBedrock 인스턴스를 생성합니다.
     llm = ChatBedrock(
-        region_name="us-west-2",
+        region_name="us-east-1",
         model_id=model_id,
         model_kwargs=model_kwargs,
         streaming=True,
@@ -67,7 +67,7 @@ def get_conversation_chat_response(
     """
     # 1. ChatBedrock 인스턴스를 생성합니다.
     llm = ChatBedrock(
-        region_name="us-west-2",
+        region_name="us-east-1",
         model_id=model_id,
         model_kwargs=model_kwargs,
         streaming=True,
@@ -113,7 +113,7 @@ def get_rag_chat_response(
 
     # 3. ChatBedrock 인스턴스를 생성합니다.
     llm = ChatBedrock(
-        region_name="us-west-2",
+        region_name="us-east-1",
         model_id=model_id,
         model_kwargs=model_kwargs,
         streaming=True,
@@ -157,7 +157,7 @@ def get_sql_chat_response(
     # 1. ChatBedrock 인스턴스를 생성합니다.
     # - 출력은 모아서 할 예정이기 때문에 Streaming 없이 생성합니다.
     llm = ChatBedrock(
-        region_name="us-west-2",
+        region_name="us-east-1",
         model_id=model_id,
         model_kwargs=model_kwargs,
         streaming=False
@@ -211,7 +211,7 @@ def get_sql_chat_response(
 
     # 7. 최종 응답 생성을 위한 ChatBedrock 인스턴스를 생성합니다.
     llm = ChatBedrock(
-        region_name="us-west-2",
+        region_name="us-east-1",
         model_id=model_id,
         model_kwargs=model_kwargs,
         streaming=True,
