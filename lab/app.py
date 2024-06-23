@@ -1,8 +1,7 @@
 import random
-from typing import List, Tuple, Union
+from typing import Tuple
 
 import streamlit as st
-from langchain_core.messages import AIMessage, HumanMessage
 import lab.services.chat_service as chat_svc
 import lab.services.opensearch_service as os_svc
 
@@ -114,6 +113,18 @@ def set_file_uploader():
             st.rerun()
 
 
+def set_mode_selector():
+    mode = st.sidebar.radio(
+        "Generation Mode",
+        [":robot_face: **Normal Chat**",
+         ":hourglass_flowing_sand: **History Chat**",
+         ":eyeglasses: **RAG Chat**",
+         ":bar_chart: **SQL Chat**"],
+        index=0,
+    )
+    return mode
+
+
 def display_history_messages() -> None:
     """
     Display chat messages and uploaded images in the Streamlit app.
@@ -123,26 +134,6 @@ def display_history_messages() -> None:
         with st.chat_message(message_role):
             message_content = message["content"]
             st.markdown(message_content)
-
-
-def convert_history_messages_for_memory() -> List[Union[AIMessage, HumanMessage]]:
-    """
-    Convert the messages for the LangChain conversation chain.
-    """
-    messages = st.session_state["langchain_messages"]
-
-    for i, message in enumerate(messages):
-        if isinstance(message.content, list):
-            message_content = message.content[0]
-            print(message_content)
-            if "type" in message_content:
-                if message_content["type"] == "ai":
-                    message = AIMessage(message_content["content"])
-                if message_content["type"] == "human":
-                    message = HumanMessage(message_content["content"])
-                messages[i] = message
-
-    return messages
 
 
 def main() -> None:
@@ -169,30 +160,20 @@ def main() -> None:
         "max_tokens": max_tokens,
     }
 
-    # Get user input message
-    content = st.chat_input()
-
     # Set file upload file
     set_file_uploader()
 
     # Get Mode
-    mode = st.sidebar.radio(
-        "Generation Mode",
-        [":robot_face: **Normal Chat**",
-         ":hourglass_flowing_sand: **History Chat**",
-         ":eyeglasses: **RAG Chat**",
-         ":bar_chart: **SQL Chat**"],
-        index=0,
-    )
+    mode = set_mode_selector()
+
+    # Get user input message
+    content = st.chat_input()
 
     # Set new chat button
     st.sidebar.button("Start New Chat", on_click=init_chat_data, type="primary")
 
     # Display all history messages
     display_history_messages()
-
-    # Convert history messages format for memory
-    convert_history_messages_for_memory()
 
     # Store user message
     if content:
