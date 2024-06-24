@@ -78,10 +78,12 @@ def get_opensearch_vector_client():
 def create_index_from_pdf_file(uploaded_file):
     print(f"current_pdf_file : {uploaded_file}")
 
+    # 1. 사용될 변수를 정의하고 사용할 파일 이름과 타입을 추출합니다.
     docs = []
     source_name = uploaded_file.name.split('/')[-1]
     type_name = source_name.split('.')[-1]
 
+    # 2. 지정된 경로에서 파일을 읽고 페이지 단위로 chunk 를 나눕니다.
     with pdfplumber.open(uploaded_file) as pdf:
         for page_number, page in enumerate(pdf.pages, start=1):
             page_text = page.extract_text()
@@ -94,6 +96,8 @@ def create_index_from_pdf_file(uploaded_file):
                 }
             )
             docs.append(chunk)
+
+    # 3. 인덱스를 생성하고 document 를 벡터와 함께 저장합니다.
     if len(docs) > 0:
         create_index_from_documents(documents=docs)
 
