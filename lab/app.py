@@ -2,8 +2,8 @@ import random
 from typing import Tuple
 
 import streamlit as st
-import lab.services.chat_service as chat_svc
-import lab.services.opensearch_service as os_svc
+import services.chat_service as chat_svc
+import services.opensearch_service as os_svc
 
 
 def set_page_config() -> None:

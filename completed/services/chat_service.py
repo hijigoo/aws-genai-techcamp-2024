@@ -11,7 +11,7 @@ from langchain_community.tools import QuerySQLDataBaseTool
 from langchain_core.messages import HumanMessage
 from langchain_community.utilities import SQLDatabase
 
-import completed.services.opensearch_service as os_svc
+import services.opensearch_service as os_svc
 
 
 # 토큰 단위로 생성되는 스트리밍 텍스트를 출력하기 위한 콜백 핸들러 클래스를 정의합니다.
@@ -88,7 +88,7 @@ def get_conversation_chat_response(
         verbose=True
     )
 
-    # 6. ConversationChain 을 호출해서 응답을 생성합니다.
+    # 3. ConversationChain 을 호출해서 응답을 생성합니다.
     answer = conversation_chain.predict(input=content)
     return answer
 
