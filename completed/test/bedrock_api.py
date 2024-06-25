@@ -3,7 +3,6 @@ from langchain_core.messages import HumanMessage
 
 # 1. ChatBedrock 을 생성합니다.
 llm = ChatBedrock(
-    region_name="us-east-1",
     model_id="anthropic.claude-3-sonnet-20240229-v1:0",
     streaming=True,
 )
