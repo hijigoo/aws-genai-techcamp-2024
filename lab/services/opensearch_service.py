@@ -15,44 +15,29 @@ opensearch_domain_name = "genai-techcamp-2024"
 opensearch_index_name = "genai-techcamp-2024-index"
 
 
-# OpenSearch Client 를 생성합니다.
+# TODO: OpenSearch Client 를 생성합니다.
 def get_opensearch_client():
-    return OpenSearch(
-        hosts=[
-            {'host': opensearch_domain_endpoint.replace("https://", ""),
-             'port': 443
-             }
-        ],
-        http_auth=(opensearch_user_id, opensearch_user_password),  # Master username, Master password,
-        use_ssl=True,
-        verify_certs=True,
-        connection_class=RequestsHttpConnection
-    )
+    pass
 
 
-# OpenSearch 에 인덱스가 있는지 확인합니다.
+# TODO: OpenSearch 에 인덱스가 있는지 확인합니다.
 def check_if_index_exists() -> bool:
-    os_client = get_opensearch_client()
-    exists = os_client.indices.exists(opensearch_index_name)
-    return exists
+    pass
 
 
-# OpenSearch 에 인덱스를 생성합니다.
+# TODO: OpenSearch 에 인덱스를 생성합니다.
 def create_index():
-    os_client = get_opensearch_client()
-    os_client.indices.create(index=opensearch_index_name)
+    pass
 
 
-# OpenSearch 에 인덱스를 삭제합니다.
+# TODO: OpenSearch 에 인덱스를 삭제합니다.
 def delete_index():
-    os_client = get_opensearch_client()
-    return os_client.indices.delete(index=opensearch_index_name)
+    pass
 
 
-# OpenSearch 에 인덱스 리스트를 가져옵니다.
+# TODO: OpenSearch 에 인덱스 리스트를 가져옵니다.
 def get_index_list():
-    os_client = get_opensearch_client()
-    return os_client.indices.get_alias(index=opensearch_index_name)
+    pass
 
 
 # TODO: OpenSearchVectorSearch Client 를 생성합니다.
