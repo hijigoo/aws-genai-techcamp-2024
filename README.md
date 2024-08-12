@@ -1,8 +1,12 @@
-# aws-genai-techcamp-2024
+# AWS GenAI TechCamp 2024
 
 실제 업무 환경에서 사용할 수 있는 Chatbot 을 Bedrock 과 OpenSearch 를 이용해서 생성합니다.
 - **completed**: 완성된 프로젝트로 모든 코드가 구현 되어 있습니다.
 - **lab**: 실습을 위한 프로젝트로 주요 코드가 비어 있습니다.
+
+## 0. 실습 해보기
+실습을 위한 설명은 아래에서 확인할 수 있습니다.
+
 
 ## 1. 프로젝트 화면
 ![image](https://github.com/hijigoo/aws-genai-techcamp-2024/assets/1788481/f2759faa-4007-4533-9873-bcb0a761acab)
