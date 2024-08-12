@@ -7,15 +7,15 @@
 ## 0. 실습 해보기
 실습을 위한 설명은 아래에서 확인할 수 있습니다.
 
-1. (Optional) AWS Cloud9 구성
-2. 실습 프로젝트 구성
-3. OpenSearch 구성
-4. Streamlit(UI) 코드 설명
-5. Normal Chat 구현
-6. History Chat 구현
-7. RAG Chat 구현
-8. RAG Vector DB 확인
-9. SQL Chat 구현
+1. [(Optional) AWS Cloud9 구성](https://github.com/hijigoo/aws-genai-techcamp-2024/blob/main/tutorial/0-aws-cloud9-setup.md)
+2. [실습 프로젝트 구성](https://github.com/hijigoo/aws-genai-techcamp-2024/blob/main/tutorial/1-setting-project.md)
+3. [OpenSearch 구성](https://github.com/hijigoo/aws-genai-techcamp-2024/blob/main/tutorial/2-setting-opensearch.md)
+4. [Streamlit(UI) 코드 설명](https://github.com/hijigoo/aws-genai-techcamp-2024/blob/main/tutorial/3-streamlit-code.md)
+5. [Normal Chat 구현](https://github.com/hijigoo/aws-genai-techcamp-2024/blob/main/tutorial/4-normal-chat.md)
+6. [History Chat 구현](https://github.com/hijigoo/aws-genai-techcamp-2024/blob/main/tutorial/5-history-chat.md)
+7. [RAG Chat 구현](https://github.com/hijigoo/aws-genai-techcamp-2024/blob/main/tutorial/6-RAG-chat.md)
+8. [RAG Vector DB 확인](https://github.com/hijigoo/aws-genai-techcamp-2024/blob/main/tutorial/7-RAG-vector-db.md)
+9. [SQL Chat 구현](https://github.com/hijigoo/aws-genai-techcamp-2024/blob/main/tutorial/8-SQL-chat.md)
 
 
 ## 1. 프로젝트 화면
